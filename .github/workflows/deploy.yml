@@ -27,7 +27,7 @@ jobs:
       - name: Check if branch is up-to-date with base branch
         id: check
         run: |
-          BASE_BRANCH=${{ github.event.inputs.base-branch || 'main' }}
+          BASE_BRANCH='main'
           CURRENT_BRANCH=$(echo "${GITHUB_REF#refs/heads/}")
           echo "Checking if $CURRENT_BRANCH is up-to-date with $BASE_BRANCH"
           git fetch origin $BASE_BRANCH
