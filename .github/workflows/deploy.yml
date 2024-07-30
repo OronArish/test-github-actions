@@ -1,11 +1,19 @@
-name: Build and deploy Python app
+name: Check if branch is up-to-date with test-branch and deploy Python app
 
 on:
   push:
     branches-ignore:
       - main
       - test-branch
+  pull_request:
+    branches:
+      - test-branch
   workflow_dispatch:
+    inputs:
+      base-branch:
+        description: 'The base branch to compare against'
+        required: true
+        default: 'test-branch'
 
 jobs:
   check-branch-up-to-date:
@@ -13,18 +21,20 @@ jobs:
     outputs:
       up_to_date: ${{ steps.check.outputs.up_to_date }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.ref }}
 
-      - name: Check if branch is up-to-date with test-branch
+      - name: Check if branch is up-to-date with base branch
         id: check
         run: |
-          BASE_BRANCH=main
+          BASE_BRANCH=${{ github.event.inputs.base-branch || 'test-branch' }}
           CURRENT_BRANCH=$(echo "${GITHUB_REF#refs/heads/}")
           echo "Checking if $CURRENT_BRANCH is up-to-date with $BASE_BRANCH"
           git fetch origin $BASE_BRANCH
-          if git merge-base --is-ancestor origin/$BASE_BRANCH HEAD; then
+          git fetch origin $CURRENT_BRANCH
+          if git merge-base --is-ancestor origin/$BASE_BRANCH origin/$CURRENT_BRANCH; then
             echo "Branch $CURRENT_BRANCH is up-to-date with $BASE_BRANCH."
             echo "::set-output name=up_to_date::true"
           else
@@ -38,7 +48,8 @@ jobs:
     needs: check-branch-up-to-date
     if: needs.check-branch-up-to-date.outputs.up_to_date == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -51,7 +62,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run the app
-        run: python app.py
+        run: python example.py
 
       - name: Zip artifact for deployment
         run: zip release.zip ./* -r
