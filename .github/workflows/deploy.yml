@@ -1,18 +1,11 @@
-name: Check if branch is up-to-date and deploy Python app
+name: Build and deploy Python app
 
 on:
   push:
-    branches:
-      - test-branch
-  pull_request:
-    branches:
+    branches-ignore:
       - main
+      - test-branch
   workflow_dispatch:
-    inputs:
-      base-branch:
-        description: 'The base branch to compare against'
-        required: true
-        default: 'main'
 
 jobs:
   check-branch-up-to-date:
@@ -24,10 +17,10 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
-      - name: Check if branch is up-to-date with base branch
+      - name: Check if branch is up-to-date with test-branch
         id: check
         run: |
-          BASE_BRANCH='main'
+          BASE_BRANCH=main
           CURRENT_BRANCH=$(echo "${GITHUB_REF#refs/heads/}")
           echo "Checking if $CURRENT_BRANCH is up-to-date with $BASE_BRANCH"
           git fetch origin $BASE_BRANCH
@@ -58,7 +51,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run the app
-        run: python example.py
+        run: python app.py
 
       - name: Zip artifact for deployment
         run: zip release.zip ./* -r
@@ -75,4 +68,12 @@ jobs:
     if: needs.build.result == 'success'
     steps:
       - name: Download artifact from build job
-        uses: act
+        uses: actions/download-artifact@v3
+        with:
+          name: python-app
+
+      - name: Unzip artifact for deployment
+        run: unzip release.zip
+
+      - name: Deploy to "deployment" simulation
+        run: echo "Deploying to deployment simulation"
